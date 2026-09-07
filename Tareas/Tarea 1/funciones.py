@@ -1,3 +1,7 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
+
 def histograma(img):
     """Cuenta de píxeles por nivel de intensidad, 0 a 255."""
     return np.bincount(img.ravel(), minlength=256)
@@ -8,7 +12,8 @@ def triptico(original, transformada, lut, titulo=""):
     La curva se dibuja a partir de la LUT: es literalmente la tabla que se aplicó,
     no una reconstrucción teórica de ella.
     """
-    fig, ax = plt.subplots(1, 3, figsize=(9.5, 3.1))
+    fig, ax = plt.subplots(1, 3, figsize=(12.5, 3.8))
+    fig.subplots_adjust(wspace=0.55)
 
     ax[0].imshow(transformada, cmap="gray", vmin=0, vmax=255)
     ax[0].set_title(titulo or "resultado")
