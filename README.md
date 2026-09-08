@@ -1,0 +1,1 @@
+En este repositorio se encuentran tanto tal tareas como el clase a clase del ramo **Procesamiento de imagenes**
