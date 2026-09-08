@@ -1,5 +1,73 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import cv2
+
+
+def _aplicar_lut(img, lut, bgr):
+    if bgr:
+        return cv2.merge([cv2.LUT(canal, lut) for canal in cv2.split(img)])
+
+    ycrcb = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+    ycrcb[:, :, 0] = cv2.LUT(ycrcb[:, :, 0], lut)
+    return cv2.cvtColor(ycrcb, cv2.COLOR_YCrCb2BGR)
+
+
+def gamma_transformation(img, gamma=0.4, bgr=True):
+    lut = np.array([((nivel / 255.0) ** gamma) * 255 for nivel in range(256)], dtype=np.uint8)
+    return _aplicar_lut(img, lut, bgr), lut
+
+
+def estiramiento_min_max(img, bgr=True):
+    niveles = img if bgr else cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)[:, :, 0]
+    inferior, superior = float(niveles.min()), float(niveles.max())
+    if superior <= inferior:
+        lut = np.arange(256, dtype=np.uint8)
+    else:
+        lut = np.clip((np.arange(256) - inferior) * 255.0 / (superior - inferior), 0, 255).astype(np.uint8)
+    return _aplicar_lut(img, lut, bgr), lut
+
+
+def estiramiento_lo_hi(img, lo=5, hi=95, bgr=True):
+    niveles = img if bgr else cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)[:, :, 0]
+    inferior, superior = np.percentile(niveles, (lo, hi))
+    if superior <= inferior:
+        lut = np.arange(256, dtype=np.uint8)
+    else:
+        lut = np.clip((np.arange(256) - inferior) * 255.0 / (superior - inferior), 0, 255).astype(np.uint8)
+    return _aplicar_lut(img, lut, bgr), lut
+
+
+def _ecualizacion_lut(canal):
+    hist = np.bincount(canal.ravel(), minlength=256)
+    acumulado = hist.cumsum()
+    presentes = hist > 0
+    minimo = acumulado[presentes][0]
+    if canal.size == minimo:
+        return np.arange(256, dtype=np.uint8)
+    return np.clip(np.round((acumulado - minimo) * 255.0 / (canal.size - minimo)), 0, 255).astype(np.uint8)
+
+
+def ecualizacion_histograma(img, bgr=True):
+    if bgr:
+        luts = [_ecualizacion_lut(canal) for canal in cv2.split(img)]
+        resultado = cv2.merge([cv2.LUT(canal, lut) for canal, lut in zip(cv2.split(img), luts)])
+        return resultado, luts
+
+    ycrcb = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+    lut = _ecualizacion_lut(ycrcb[:, :, 0])
+    ycrcb[:, :, 0] = cv2.LUT(ycrcb[:, :, 0], lut)
+    return cv2.cvtColor(ycrcb, cv2.COLOR_YCrCb2BGR), lut
+
+
+def ecualizacion_clahe(img, bgr=True):
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    if bgr:
+        resultado = cv2.merge([clahe.apply(canal) for canal in cv2.split(img)])
+    else:
+        ycrcb = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+        ycrcb[:, :, 0] = clahe.apply(ycrcb[:, :, 0])
+        resultado = cv2.cvtColor(ycrcb, cv2.COLOR_YCrCb2BGR)
+    return resultado, None
 
 
 def histograma(img):
